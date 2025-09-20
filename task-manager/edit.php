@@ -1,5 +1,4 @@
 <?php
-// edit.php
 require_once 'config.php';
 
 if (!isset($_GET['id'])) {
@@ -18,20 +17,41 @@ if (!$task) {
     exit();
 }
 
+$error = [];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = htmlspecialchars(trim($_POST['title']));
-    $description = htmlspecialchars(trim($_POST['description']));
-    $status = $_POST['status'];
+    $title = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $status = $_POST['status'] ?? 'не выполнена';
 
-    if (!empty($title)) {
-        $sql = "UPDATE tasks SET title = ?, description = ?, status = ? WHERE id = ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$title, $description, $status, $id]);
+    if (empty($title)) {
+        $error['title'] = "Название задачи обязательно для заполнения.";
+    } elseif (strlen($title) > 255) {
+        $error['title'] = "Название не должно превышать 255 символов.";
+    } elseif (preg_match('/^\d/', $title)) {
+        $error['title'] = "Название не может начинаться с цифры.";
+    } elseif (!preg_match('/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u', $title)) {
+        $error['title'] = "Название содержит недопустимые символы (разрешены буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( )).";
+    }
 
-        header('Location: index.php');
-        exit();
-    } else {
-        $error = "Название задачи обязательно для заполнения!";
+    if (strlen($description) > 2000) {
+        $error['description'] = "Описание не должно превышать 2000 символов.";
+    }
+
+    if (empty($error)) {
+        $title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+        $description = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
+
+        try {
+            $sql = "UPDATE tasks SET title = ?, description = ?, status = ? WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$title, $description, $status, $id]);
+
+            header('Location: index.php?success=1');
+            exit();
+        } catch (Exception $e) {
+            $error['general'] = "Ошибка при сохранении задачи. Попробуйте позже.";
+        }
     }
 }
 ?>
@@ -95,6 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             color: #6c757d;
             text-align: right;
         }
+        .invalid-feedback {
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545 !important;
+        }
     </style>
 </head>
 <body>
@@ -124,30 +151,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="form-container">
-                    <?php if (isset($error)): ?>
+
+                    <?php if (isset($error['general'])): ?>
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle me-2"></i><?= $error ?>
+                            <i class="bi bi-exclamation-triangle me-2"></i><?= htmlspecialchars($error['general'], ENT_QUOTES, 'UTF-8') ?>
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
                     <?php endif; ?>
 
-                    <form method="post">
+                    <form method="post" id="taskForm">
                         <div class="mb-4">
                             <label for="title" class="form-label required-field">
                                 <i class="bi bi-card-heading me-1"></i>Название задачи
                             </label>
-                            <input type="text" class="form-control" id="title" name="title" 
-                                   value="<?= htmlspecialchars($task['title']) ?>" required>
+                            <input type="text" maxlength="255"
+                                   class="form-control <?= isset($error['title']) ? 'is-invalid' : '' ?>"
+                                   id="title" name="title"
+                                   value="<?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8') ?>"
+                                   placeholder="Введите название задачи (не начинайте с цифры)" required>
                             <div class="character-count" id="title-count"><?= strlen($task['title']) ?>/255</div>
+                            <?php if (isset($error['title'])): ?>
+                                <div class="invalid-feedback d-block"><?= htmlspecialchars($error['title'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="mb-4">
                             <label for="description" class="form-label">
                                 <i class="bi bi-text-paragraph me-1"></i>Описание задачи
                             </label>
-                            <textarea class="form-control" id="description" name="description" 
-                                      rows="4"><?= htmlspecialchars($task['description']) ?></textarea>
+                            <textarea class="form-control <?= isset($error['description']) ? 'is-invalid' : '' ?>"
+                                      id="description" name="description" rows="4" maxlength="2000"
+                                      placeholder="Описание задачи (необязательно)"><?= htmlspecialchars($task['description'], ENT_QUOTES, 'UTF-8') ?></textarea>
                             <div class="character-count" id="description-count"><?= strlen($task['description']) ?> символов</div>
+                            <?php if (isset($error['description'])): ?>
+                                <div class="invalid-feedback d-block"><?= htmlspecialchars($error['description'], ENT_QUOTES, 'UTF-8') ?></div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="mb-4">
@@ -168,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <div class="row">
                                     <div class="col-md-6">
                                         <small class="text-muted">
-                                            <i class="bi bi-hash me-1"></i>ID: <?= $task['id'] ?>
+                                            <i class="bi bi-hash me-1"></i>ID: <?= htmlspecialchars($task['id']) ?>
                                         </small>
                                     </div>
                                     <div class="col-md-6">
@@ -184,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <a href="index.php" class="btn btn-secondary">
                                 <i class="bi bi-x-circle me-1"></i>Отмена
                             </a>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
                                 <i class="bi bi-check-circle me-1"></i>Сохранить изменения
                             </button>
                         </div>
@@ -196,30 +234,118 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function setupCharacterCounter(inputId, counterId, maxLength = null) {
-            const input = document.getElementById(inputId);
-            const counter = document.getElementById(counterId);
-            
-            function updateCount() {
-                const length = input.value.length;
-                if (maxLength) {
-                    counter.textContent = `${length}/${maxLength}`;
-                    if (length > maxLength * 0.8) {
-                        counter.style.color = '#dc3545';
-                    } else {
-                        counter.style.color = '#6c757d';
-                    }
-                } else {
-                    counter.textContent = `${length} символов`;
-                }
-            }
-            
-            input.addEventListener('input', updateCount);
-        }
-
         document.addEventListener('DOMContentLoaded', function() {
-            setupCharacterCounter('title', 'title-count', 255);
-            setupCharacterCounter('description', 'description-count');
+
+            function setupFieldValidation(inputId, counterId, maxLength = null, validator = null) {
+                const input = document.getElementById(inputId);
+                const counter = document.getElementById(counterId);
+                const feedback = input.closest('.mb-4').querySelector('.invalid-feedback');
+
+                function updateCounter() {
+                    const len = input.value.length;
+                    if (maxLength) {
+                        counter.textContent = `${len}/${maxLength}`;
+                        counter.style.color = len > maxLength * 0.8 ? '#dc3545' : '#6c757d';
+                    } else {
+                        counter.textContent = `${len} символов`;
+                    }
+                }
+
+                function clearError() {
+                    input.classList.remove('is-invalid');
+                    if (feedback) {
+                        feedback.classList.remove('d-block');
+                    }
+                }
+
+                function showError(message) {
+                    input.classList.add('is-invalid');
+                    if (feedback) {
+                        feedback.textContent = message;
+                        feedback.classList.add('d-block');
+                    }
+                }
+
+                function validate() {
+                    if (validator) {
+                        const errorMsg = validator(input.value);
+                        if (errorMsg) {
+                            showError(errorMsg);
+                            return false;
+                        } else {
+                            clearError();
+                            return true;
+                        }
+                    }
+                    clearError();
+                    return true;
+                }
+
+                input.addEventListener('input', function() {
+                    updateCounter();
+                    validate();
+                });
+
+                input.addEventListener('focus', function() {
+                    if (input.classList.contains('is-invalid')) {
+                        validate();
+                    }
+                });
+
+                updateCounter();
+
+                return {
+                    element: input,
+                    validate: validate
+                };
+            }
+
+            function validateTitle(value) {
+                if (value.trim() === '') return "Название задачи обязательно.";
+                if (/^\d/.test(value)) return "Название не может начинаться с цифры.";
+                if (!/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u.test(value))
+                    return "Недопустимые символы. Разрешены: буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( )";
+                if (value.length > 255) return "Название не должно превышать 255 символов.";
+                return null;
+            }
+
+            function validateDescription(value) {
+                if (value.length > 2000) return "Описание не должно превышать 2000 символов.";
+                return null;
+            }
+
+            const titleField = setupFieldValidation('title', 'title-count', 255, validateTitle);
+            const descriptionField = setupFieldValidation('description', 'description-count', 2000, validateDescription);
+
+            let formChanged = false;
+            const form = document.getElementById('taskForm');
+            const inputs = form.querySelectorAll('input, textarea, select');
+
+            inputs.forEach(el => {
+                el.addEventListener('input', () => formChanged = true);
+            });
+
+            window.addEventListener('beforeunload', (e) => {
+                if (formChanged) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+
+            form.addEventListener('submit', function(e) {
+                let isValid = true;
+
+                if (!titleField.validate()) isValid = false;
+                if (!descriptionField.validate()) isValid = false;
+
+                if (!isValid) {
+                    e.preventDefault();
+                    return false;
+                }
+
+                formChanged = false;
+            });
+
         });
     </script>
 </body>
