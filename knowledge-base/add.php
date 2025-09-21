@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error['title'] = "Название не должно превышать 255 символов.";
     } elseif (preg_match('/^\d/', $title)) {
         $error['title'] = "Название не может начинаться с цифры.";
-    } elseif (!preg_match('/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u', $title)) {
+    } elseif (!preg_match('/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()"\'«»„“”:]+$/u', $title)) {
         $error['title'] = "Название содержит недопустимые символы (разрешены буквы, цифры, пробелы, дефис, запятая, точка, восклицательный и вопросительный знаки, скобки).";
     }
 
@@ -160,17 +160,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php endif; ?>
 
                     <form method="post" id="articleForm">
-                        <div class="mb-4">
+                      <div class="mb-4">
                             <label for="title" class="form-label required-field">
                                 <i class="bi bi-bookmark me-1"></i>Название статьи
                             </label>
                             <input type="text" minlength="3" maxlength="255" 
-                                   class="form-control <?= isset($error['title']) ? 'is-invalid' : '' ?>" 
-                                   id="title" name="title" 
-                                   placeholder="Введите название статьи (не начинайте с цифры)" 
-                                   value="<?= htmlspecialchars($_POST['title'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
-                                   required>
+                                class="form-control <?= isset($error['title']) ? 'is-invalid' : '' ?>" 
+                                id="title" name="title" 
+                                placeholder="Введите название статьи (не начинайте с цифры)" 
+                                value="<?= htmlspecialchars($_POST['title'] ?? '', ENT_QUOTES, 'UTF-8') ?>" 
+                                required>
                             <div class="character-count" id="title-count">0/255</div>
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['title'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['title'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -181,9 +182,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="bi bi-text-paragraph me-1"></i>Краткое описание
                             </label>
                             <textarea class="form-control <?= isset($error['description']) ? 'is-invalid' : '' ?>" 
-                                      id="description" name="description" rows="3" maxlength="500"
-                                      placeholder="Краткое описание статьи (необязательно)"><?= htmlspecialchars($_POST['description'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                                    id="description" name="description" rows="3" maxlength="500"
+                                    placeholder="Краткое описание статьи (необязательно)"><?= htmlspecialchars($_POST['description'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                             <div class="character-count" id="description-count">0 символов</div>
+                            <!-- Добавьте эту строку -->
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['description'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['description'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -194,10 +197,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="bi bi-file-text me-1"></i>Содержание статьи
                             </label>
                             <textarea class="form-control <?= isset($error['content']) ? 'is-invalid' : '' ?>" 
-                                      id="content" name="content" rows="8" maxlength="10000"
-                                      placeholder="Полное содержание статьи (обязательно)" 
-                                      required><?= htmlspecialchars($_POST['content'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
+                                    id="content" name="content" rows="8" maxlength="10000"
+                                    placeholder="Полное содержание статьи (обязательно)" 
+                                    required><?= htmlspecialchars($_POST['content'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                             <div class="character-count" id="content-count">0 символов</div>
+                            <!-- Добавьте эту строку -->
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['content'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['content'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -242,122 +247,130 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
+   <script>
+    document.addEventListener('DOMContentLoaded', function() {
 
-            function setupFieldValidation(inputId, counterId, maxLength = null, validator = null) {
-                const input = document.getElementById(inputId);
-                const counter = document.getElementById(counterId);
-                const feedback = input.closest('.mb-4').querySelector('.invalid-feedback');
+        function setupFieldValidation(inputId, counterId, maxLength = null, validator = null) {
+            const input = document.getElementById(inputId);
+            const counter = document.getElementById(counterId);
+            // Ищем ближайший элемент с классом invalid-feedback
+            const feedback = input.closest('.mb-4').querySelector('.invalid-feedback');
 
-                function updateCounter() {
-                    const len = input.value.length;
-                    if (maxLength) {
-                        counter.textContent = `${len}/${maxLength}`;
-                        counter.style.color = len > maxLength * 0.8 ? '#dc3545' : '#6c757d';
+            function updateCounter() {
+                const len = input.value.length;
+                if (maxLength) {
+                    counter.textContent = `${len}/${maxLength}`;
+                    counter.style.color = len > maxLength * 0.8 ? '#dc3545' : '#6c757d';
+                } else {
+                    counter.textContent = `${len} символов`;
+                }
+            }
+
+            function clearError() {
+                input.classList.remove('is-invalid');
+                if (feedback) {
+                    feedback.textContent = '';
+                    feedback.classList.remove('d-block');
+                }
+            }
+
+            function showError(message) {
+                input.classList.add('is-invalid');
+                if (feedback) {
+                    feedback.textContent = message;
+                    feedback.classList.add('d-block');
+                }
+            }
+
+            function validate() {
+                if (validator) {
+                    const errorMsg = validator(input.value);
+                    if (errorMsg) {
+                        showError(errorMsg);
+                        return false;
                     } else {
-                        counter.textContent = `${len} символов`;
+                        clearError();
+                        return true;
                     }
                 }
+                clearError();
+                return true;
+            }
 
-                function clearError() {
-                    input.classList.remove('is-invalid');
-                    if (feedback) {
-                        feedback.classList.remove('d-block');
-                    }
-                }
-
-                function showError(message) {
-                    input.classList.add('is-invalid');
-                    if (feedback) {
-                        feedback.textContent = message;
-                        feedback.classList.add('d-block');
-                    }
-                }
-
-                function validate() {
-                    if (validator) {
-                        const errorMsg = validator(input.value);
-                        if (errorMsg) {
-                            showError(errorMsg);
-                            return false;
-                        } else {
-                            clearError();
-                            return true;
-                        }
-                    }
-                    clearError();
-                    return true;
-                }
-
-                input.addEventListener('input', function() {
-                    updateCounter();
-                    validate();
-                });
-
-                input.addEventListener('focus', function() {
-                    if (input.classList.contains('is-invalid')) {
-                        validate();
-                    }
-                });
-
+            input.addEventListener('input', function() {
                 updateCounter();
-
-                return {
-                    element: input,
-                    validate: validate
-                };
-            }
-
-            function validateTitle(value) {
-                if (value.trim() === '') return "Название статьи обязательно.";
-                if (/^\d/.test(value)) return "Название не может начинаться с цифры.";
-                if (!/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u.test(value)) 
-                    return "Недопустимые символы. Разрешены: буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( )";
-                if (value.length > 255) return "Название не должно превышать 255 символов.";
-                return null;
-            }
-
-            function validateContent(value) {
-                if (value.trim() === '') return "Содержание статьи обязательно.";
-                if (value.length > 10000) return "Содержание не должно превышать 10 000 символов.";
-                return null;
-            }
-
-            const titleField = setupFieldValidation('title', 'title-count', 255, validateTitle);
-            setupFieldValidation('description', 'description-count', 500);
-            const contentField = setupFieldValidation('content', 'content-count', 10000, validateContent);
-
-            let formChanged = false;
-            const form = document.getElementById('articleForm');
-            const inputs = form.querySelectorAll('input, textarea, select');
-
-            inputs.forEach(el => {
-                el.addEventListener('input', () => formChanged = true);
+                validate();
             });
 
-            window.addEventListener('beforeunload', (e) => {
-                if (formChanged) {
-                    e.preventDefault();
-                    e.returnValue = '';
+            input.addEventListener('focus', function() {
+                if (input.classList.contains('is-invalid')) {
+                    validate();
                 }
             });
 
-            form.addEventListener('submit', function(e) {
-                let isValid = true;
+            updateCounter();
 
-                if (!titleField.validate()) isValid = false;
-                if (!contentField.validate()) isValid = false;
+            return {
+                element: input,
+                validate: validate
+            };
+        }
 
-                if (!isValid) {
-                    e.preventDefault();
-                    return false;
-                }
+        function validateTitle(value) {
+            if (value.trim() === '') return "Название статьи обязательно.";
+            if (/^\d/.test(value)) return "Название не может начинаться с цифры.";
+            if (!/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()"'«»„“”:]+$/u.test(value)) 
+                return "Недопустимые символы. Разрешены: буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( ) \" ' « » „ “ ”";
+            if (value.length > 255) return "Название не должно превышать 255 символов.";
+            return null;
+        }
 
-                formChanged = false;
-            });
+        function validateDescription(value) {
+            if (value.length > 500) return "Описание не должно превышать 500 символов.";
+            return null;
+        }
 
+        function validateContent(value) {
+            if (value.trim() === '') return "Содержание статьи обязательно.";
+            if (value.length > 10000) return "Содержание не должно превышать 10 000 символов.";
+            return null;
+        }
+
+        const titleField = setupFieldValidation('title', 'title-count', 255, validateTitle);
+        const descriptionField = setupFieldValidation('description', 'description-count', 500, validateDescription);
+        const contentField = setupFieldValidation('content', 'content-count', 10000, validateContent);
+
+        let formChanged = false;
+        const form = document.getElementById('articleForm');
+        const inputs = form.querySelectorAll('input, textarea, select');
+
+        inputs.forEach(el => {
+            el.addEventListener('input', () => formChanged = true);
         });
-    </script>
+
+        window.addEventListener('beforeunload', (e) => {
+            if (formChanged) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            let isValid = true;
+
+            if (!titleField.validate()) isValid = false;
+            if (!descriptionField.validate()) isValid = false;
+            if (!contentField.validate()) isValid = false;
+
+            if (!isValid) {
+                e.preventDefault();
+                return false;
+            }
+
+            formChanged = false;
+        });
+
+    });
+</script>
 </body>
 </html>

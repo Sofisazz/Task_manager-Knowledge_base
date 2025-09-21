@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error['title'] = "Название не должно превышать 255 символов.";
     } elseif (preg_match('/^\d/', $title)) {
         $error['title'] = "Название не может начинаться с цифры.";
-    } elseif (!preg_match('/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u', $title)) {
+    } elseif (!preg_match('/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()"\'«»„“”:]+$/u', $title)) {
         $error['title'] = "Название содержит недопустимые символы (разрешены буквы, цифры, пробелы, дефис, запятая, точка, восклицательный и вопросительный знаки, скобки).";
     }
 
@@ -180,6 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                    value="<?= htmlspecialchars($article['title'], ENT_QUOTES, 'UTF-8') ?>"
                                    placeholder="Введите название статьи (не начинайте с цифры)" required>
                             <div class="character-count" id="title-count">0/255</div>
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['title'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['title'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -193,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       id="description" name="description" rows="3" maxlength="500"
                                       placeholder="Краткое описание статьи (необязательно)"><?= htmlspecialchars($article['description'], ENT_QUOTES, 'UTF-8') ?></textarea>
                             <div class="character-count" id="description-count">0 символов</div>
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['description'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['description'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -206,6 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                       id="content" name="content" rows="8" maxlength="10000"
                                       placeholder="Полное содержание статьи (обязательно)" required><?= htmlspecialchars($article['content'], ENT_QUOTES, 'UTF-8') ?></textarea>
                             <div class="character-count" id="content-count">0 символов</div>
+                            <div class="invalid-feedback"></div>
                             <?php if (isset($error['content'])): ?>
                                 <div class="invalid-feedback d-block"><?= htmlspecialchars($error['content'], ENT_QUOTES, 'UTF-8') ?></div>
                             <?php endif; ?>
@@ -291,6 +294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 function clearError() {
                     input.classList.remove('is-invalid');
                     if (feedback) {
+                        feedback.textContent = '';
                         feedback.classList.remove('d-block');
                     }
                 }
@@ -340,9 +344,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             function validateTitle(value) {
                 if (value.trim() === '') return "Название статьи обязательно.";
                 if (/^\d/.test(value)) return "Название не может начинаться с цифры.";
-                if (!/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()]+$/u.test(value))
-                    return "Недопустимые символы. Разрешены: буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( )";
+                if (!/^[a-zA-Zа-яА-Я0-9\s\-_,.!?()"'«»„“”:]+$/u.test(value))
+                    return "Недопустимые символы. Разрешены: буквы, цифры, пробелы, дефис, запятая, точка, ! ? ( ) \" ' « » „ “ ”";
                 if (value.length > 255) return "Название не должно превышать 255 символов.";
+                return null;
+            }
+
+            function validateDescription(value) {
+                if (value.length > 500) return "Описание не должно превышать 500 символов.";
                 return null;
             }
 
@@ -353,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             const titleField = setupFieldValidation('title', 'title-count', 255, validateTitle);
-            setupFieldValidation('description', 'description-count', 500);
+            const descriptionField = setupFieldValidation('description', 'description-count', 500, validateDescription);
             const contentField = setupFieldValidation('content', 'content-count', 10000, validateContent);
 
             let formChanged = false;
@@ -375,6 +384,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 let isValid = true;
 
                 if (!titleField.validate()) isValid = false;
+                if (!descriptionField.validate()) isValid = false;
                 if (!contentField.validate()) isValid = false;
 
                 if (!isValid) {

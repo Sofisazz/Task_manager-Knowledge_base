@@ -73,6 +73,17 @@ $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             transform: translateY(-2px);
             box-shadow: 0 0.5rem 1rem rgba(45, 206, 137, 0.3);
         }
+        .btn-info {
+            background: linear-gradient(135deg, #11cdef 0%, #1171ef 100%);
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(17, 205, 239, 0.3);
+        }
         .bg-primary {
             background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%) !important;
         }
@@ -89,38 +100,56 @@ $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
             background: linear-gradient(135deg, #11cdef 0%, #1171ef 100%) !important;
             color: white !important;
         }
+        .content-modal .modal-content {
+            border-radius: 1rem;
+            border: none;
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.2);
+        }
+        .content-modal .modal-header {
+            background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%);
+            color: white;
+            border-radius: 1rem 1rem 0 0;
+        }
+        .article-content {
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+        .article-meta {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark" style="background: linear-gradient(135deg, #344767 0%, #3a5a78 100%);">
-    <div class="container">
-        <a class="navbar-brand" href="index.php">
-            <i class="bi bi-journal-bookmark-fill me-2"></i>База знаний
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item">
-                    <a class="nav-link active" href="index.php">
-                        <i class="bi bi-house me-1"></i>Главная
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="add.php">
-                        <i class="bi bi-plus-circle me-1"></i>Добавить статью
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="../task-manager/index.php" style="background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); border-radius: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem !important;">
-                        <i class="bi bi-check2-circle me-1"></i>Менеджер задач
-                    </a>
-                </li>
-            </ul>
+        <div class="container">
+            <a class="navbar-brand" href="index.php">
+                <i class="bi bi-journal-bookmark-fill me-2"></i>База знаний
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="index.php">
+                            <i class="bi bi-house me-1"></i>Главная
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="add.php">
+                            <i class="bi bi-plus-circle me-1"></i>Добавить статью
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../task-manager/index.php" style="background: linear-gradient(135deg, #5e72e4 0%, #825ee4 100%); border-radius: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem !important;">
+                            <i class="bi bi-check2-circle me-1"></i>Менеджер задач
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
-</nav>
+    </nav>
 
     <div class="hero-section">
         <div class="container text-center">
@@ -229,6 +258,17 @@ $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                     </small>
                                 </td>
                                 <td class="action-buttons">
+                                    <button class="btn btn-sm btn-info view-content" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#contentModal"
+                                            data-title="<?= htmlspecialchars($article['title']) ?>"
+                                            data-content="<?= htmlspecialchars($article['content']) ?>"
+                                            data-keywords="<?= htmlspecialchars($article['keywords']) ?>"
+                                            data-status="<?= htmlspecialchars($article['status']) ?>"
+                                            data-created="<?= date('d.m.Y H:i', strtotime($article['created_at'])) ?>"
+                                            title="Просмотреть содержание">
+                                        <i class="bi bi-textarea"></i>
+                                    </button>
                                     <a href="edit.php?id=<?= $article['id'] ?>" class="btn btn-sm btn-warning" title="Редактировать">
                                         <i class="bi bi-pencil"></i>
                                     </a>
@@ -266,6 +306,34 @@ $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php endif; ?>
     </div>
 
+    <!-- Модальное окно для просмотра содержания -->
+    <div class="modal fade content-modal" id="contentModal" tabindex="-1" aria-labelledby="contentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="contentModalLabel">
+                        <i class="bi bi-journal-text me-2"></i>
+                        <span id="modalArticleTitle"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="article-meta mb-3">
+                        <span class="badge bg-success me-2" id="modalArticleStatus"></span>
+                        <span class="me-3"><i class="bi bi-calendar me-1"></i><span id="modalArticleDate"></span></span>
+                        <span><i class="bi bi-tags me-1"></i><span id="modalArticleKeywords"></span></span>
+                    </div>
+                    <div class="article-content" id="modalArticleContent"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Закрыть
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function confirmDelete() {
@@ -274,6 +342,30 @@ $articles = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         document.querySelectorAll('a[href*="delete.php"]').forEach(link => {
             link.addEventListener('click', confirmDelete);
+        });
+
+        // Обработка модального окна просмотра содержания
+        const contentModal = document.getElementById('contentModal');
+        contentModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const title = button.getAttribute('data-title');
+            const content = button.getAttribute('data-content');
+            const keywords = button.getAttribute('data-keywords');
+            const status = button.getAttribute('data-status');
+            const created = button.getAttribute('data-created');
+            
+            document.getElementById('modalArticleTitle').textContent = title;
+            document.getElementById('modalArticleContent').textContent = content;
+            document.getElementById('modalArticleKeywords').textContent = keywords || '—';
+            document.getElementById('modalArticleDate').textContent = created;
+            
+            const statusBadge = document.getElementById('modalArticleStatus');
+            statusBadge.textContent = status;
+            if (status === 'опубликована') {
+                statusBadge.className = 'badge bg-success me-2';
+            } else {
+                statusBadge.className = 'badge bg-secondary me-2';
+            }
         });
     </script>
 </body>
